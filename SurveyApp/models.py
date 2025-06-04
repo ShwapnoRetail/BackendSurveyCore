@@ -1,7 +1,7 @@
 from django.db import models
 
-class Department(models.Model):
 
+class Department(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
 
@@ -20,15 +20,14 @@ class SurveyType(models.Model):
 class Survey(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    site_id = models.IntegerField()  # from external API
+    site_id = models.IntegerField()
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True)
     survey_type = models.ForeignKey(SurveyType, on_delete=models.SET_NULL, null=True)
     is_location_based = models.BooleanField(default=False)
     is_image_required = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
-
+    updated_at = models.DateTimeField(auto_now=True)
     created_by_user_id = models.IntegerField()
 
     def __str__(self):
@@ -49,6 +48,7 @@ class Question(models.Model):
     type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     has_marks = models.BooleanField(default=False)
     marks = models.PositiveIntegerField(blank=True, null=True)
+    is_required = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.text[:50]}"
@@ -74,7 +74,6 @@ class SurveyTarget(models.Model):
 
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name='targets')
     target_type = models.CharField(max_length=20, choices=TARGET_CHOICES)
-
     user_id = models.IntegerField(null=True, blank=True)  # Central system user ID
     department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.CASCADE)
     site_id = models.IntegerField(null=True, blank=True)  # From central system
@@ -84,11 +83,12 @@ class SurveyTarget(models.Model):
         return f"{self.survey.title} -> {self.target_type}"
 
 
-
 class SurveyResponse(models.Model):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE)
     user_id = models.IntegerField()
     submitted_at = models.DateTimeField(auto_now_add=True)
+    location_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_lon = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
     def __str__(self):
         return f"{self.survey.title} by {self.user_id}"
@@ -100,8 +100,7 @@ class Answer(models.Model):
     answer_text = models.TextField(blank=True, null=True)
     selected_choice = models.ForeignKey(Choice, null=True, blank=True, on_delete=models.SET_NULL)
     image = models.ImageField(upload_to='survey_answers/images/', blank=True, null=True)
-    location_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    location_lon = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    marks_obtained = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self):
         return f"Answer to Q{self.question.id} in response {self.response.id}"
