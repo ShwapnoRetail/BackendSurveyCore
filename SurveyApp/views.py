@@ -124,9 +124,42 @@ def get_department_id(request, id):
 
 
 @api_view(['POST'])
-def create_survey(request):
+def create_survey_type(request):
     try:
-        pass
+        payload = request.data
+        survey_serailizer = SurveyTypeSerializer(data=payload)
+        if survey_serailizer.is_valid():
+            survey_serailizer.save()
+            return Response({
+                'code': status.HTTP_201_CREATED,
+                'message': "Survey created successfully",
+                'data': survey_serailizer.data
+            })
+        else:
+            return Response({
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': survey_serailizer.errors
+            })
+
+
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['GET'])
+def get_survey_type_id(request,id):
+    try:
+        survey_type=SurveyType.objects.get(id=id)
+        serializer = SurveyTypeSerializer(survey_type)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Survey type retrieved successfully'
+        })
+
 
     except Exception as e:
         return Response({
