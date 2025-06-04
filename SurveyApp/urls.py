@@ -10,5 +10,9 @@ urlpatterns = [
     path('api/get-dept/<id>/',get_department_id),
 
     path('api/create-survey-type/',create_survey_type),
-    path('api/get-survey-type/<id>/',get_survey_type_id)
+    path('api/get-survey-type/<id>/',get_survey_type_id),
+    path('api/update-survey-type/<id>/',update_survey_type),
+    path('api/delete-survey-type/<id>/',delete_survey_type_id),
+    path('api/get-survey-list/',get_survey_list),
+
 ]

@@ -150,9 +150,9 @@ def create_survey_type(request):
 
 
 @api_view(['GET'])
-def get_survey_type_id(request,id):
+def get_survey_type_id(request, id):
     try:
-        survey_type=SurveyType.objects.get(id=id)
+        survey_type = SurveyType.objects.get(id=id)
         serializer = SurveyTypeSerializer(survey_type)
         return Response({
             'code': status.HTTP_200_OK,
@@ -160,6 +160,78 @@ def get_survey_type_id(request,id):
             'message': 'Survey type retrieved successfully'
         })
 
+
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['PUT'])
+def update_survey_type(request, id):
+    try:
+        surveyObj = SurveyType.objects.get(id=id)
+        serializer = SurveyTypeSerializer(surveyObj, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response({
+                'status': status.HTTP_400_BAD_REQUEST,
+                'payload': serializer.errors,
+                'message': 'Validation Failed'
+            })
+
+        serializer.save()
+        return Response({
+            'status': status.HTTP_200_OK,
+            'payload': serializer.data,
+            'message': 'Survey type updated successfully'
+        })
+
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+
+
+@api_view(['DELETE'])
+def delete_survey_type_id(request, id):
+    try:
+        surveyObj=SurveyType.objects.get(id=id)
+        surveyObj.delete()
+        return Response({
+            'code': status.HTTP_200_OK,
+            'message': 'Survey type deleted successfully'
+
+        })
+
+    except SurveyType.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Survey type not found'
+        })
+
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['GET'])
+
+def get_survey_list(request):
+    try:
+        survey_type=SurveyType.objects.all()
+
+        serializer=SurveyTypeSerializer(survey_type, many=True)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Survey list retrieved successfully'
+        })
 
     except Exception as e:
         return Response({
