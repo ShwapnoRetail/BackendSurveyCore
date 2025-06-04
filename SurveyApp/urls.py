@@ -7,4 +7,5 @@ urlpatterns = [
     path('api/update-department/<id>/',update_department),
     path('api/get-all-epartment/',get_departments),
     path('api/delete-department/<id>/',delete_department),
+    path('api/get-dept/<id>/',get_department_id),
 ]

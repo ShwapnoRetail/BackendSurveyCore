@@ -105,3 +105,22 @@ def delete_department(request, id):
         })
 
 
+
+
+@api_view(['GET'])
+def get_department_id(request, id):
+
+    try:
+        dept_obj=Department.objects.get(id=id)
+        serializer = DepartmentSerializer(dept_obj)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Department retrieved successfully'
+        })
+
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
