@@ -640,3 +640,18 @@ LINE 1: SELECT COUNT(*) AS "__count" FROM "SurveyApp_department"
                                           ^
 
 "GET /admin/SurveyApp/department/ HTTP/1.1" 500 187559
+Internal Server Error: /survey/api/update-department/2
+Traceback (most recent call last):
+  File "/Users/md.zahedhasanrabbi/Downloads/Development/DjangoBackend/BackendSurveyCore/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/Users/md.zahedhasanrabbi/Downloads/Development/DjangoBackend/BackendSurveyCore/env/lib/python3.13/site-packages/django/utils/deprecation.py", line 122, in __call__
+    response = self.process_response(request, response)
+  File "/Users/md.zahedhasanrabbi/Downloads/Development/DjangoBackend/BackendSurveyCore/env/lib/python3.13/site-packages/django/middleware/common.py", line 108, in process_response
+    return self.response_redirect_class(self.get_full_path_with_slash(request))
+                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/md.zahedhasanrabbi/Downloads/Development/DjangoBackend/BackendSurveyCore/env/lib/python3.13/site-packages/django/middleware/common.py", line 87, in get_full_path_with_slash
+    raise RuntimeError(
+    ...<9 lines>...
+    )
+RuntimeError: You called this URL via POST, but the URL doesn't end in a slash and you have APPEND_SLASH set. Django can't redirect to the slash URL while maintaining POST data. Change your form to point to 127.0.0.1:8000/survey/api/update-department/2/ (note the trailing slash), or set APPEND_SLASH=False in your Django settings.
+"POST //survey/api/update-department/2 HTTP/1.1" 500 69355

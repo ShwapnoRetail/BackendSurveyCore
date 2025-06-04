@@ -1,6 +1,7 @@
 from django.db import models
 
 class Department(models.Model):
+
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
 
@@ -27,8 +28,8 @@ class Survey(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # Define who created the survey
-    created_by_user_id = models.IntegerField()  # from central user system
+
+    created_by_user_id = models.IntegerField()
 
     def __str__(self):
         return self.title
