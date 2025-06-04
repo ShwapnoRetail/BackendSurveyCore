@@ -10,3 +10,11 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 
 
+
+class SurveyTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyType
+        fields = '__all__'
+
+
+
