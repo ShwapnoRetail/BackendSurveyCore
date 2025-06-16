@@ -533,28 +533,43 @@ def get_questions_by_survey(request, id):
         })
 
 
-# Choice CRUD APIs
 @api_view(['POST'])
 def create_choice(request):
     try:
-        serializer = ChoiceSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        question_id = request.data.get('question') or request.data.get('question_id')
+        if not question_id:
+            return Response({'code': 400, 'message': 'Question ID is required'})
+
+        try:
+            question = Question.objects.get(id=question_id)
+            if question.type != 'choice':
+                return Response({
+                    'code': 400,
+                    'message': f'Cannot add choices to {question.type} type questions. Only "choice" type questions accept custom choices.'
+                })
+
+            choice = Choice.objects.create(
+                question=question,
+                text=request.data.get('text'),
+                is_correct=request.data.get('is_correct', False)
+            )
             return Response({
-                'code': status.HTTP_201_CREATED,
-                'message': "Choice created successfully",
-                'data': serializer.data
+                'code': 201,
+                'message': 'Choice created successfully',
+                'data': ChoiceSerializer(choice).data
             })
-        return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': serializer.errors
-        })
+
+        except Question.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': f'Question with ID {question_id} not found. Please provide a valid question ID of type "choice".'
+            })
+
     except Exception as e:
         return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
+            'code': 400,
             'message': str(e)
         })
-
 
 @api_view(['GET'])
 def get_choice(request, id):

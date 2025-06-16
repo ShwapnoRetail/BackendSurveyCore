@@ -9,10 +9,15 @@ class DepartmentSerializer(serializers.ModelSerializer):
         model = Department
         fields = '__all__'
 
+
 class ChoiceSerializer(serializers.ModelSerializer):
+    question = serializers.PrimaryKeyRelatedField(queryset=Question.objects.all())
+
     class Meta:
         model = Choice
-        fields = ['id', 'text', 'is_correct']
+        fields = ['id', 'question', 'text', 'is_correct']
+
+
 
 
 class QuestionSerializer(serializers.ModelSerializer):
