@@ -104,7 +104,19 @@ class AnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
         fields = ['id', 'response', 'question', 'answer_text', 'selected_choice',
-                  'image', 'marks_obtained']
+                 'image', 'marks_obtained', 'is_admin_submission', 'submitted_by']
+        extra_kwargs = {
+            'image': {'required': False, 'allow_null': True},
+            'selected_choice': {'required': False, 'allow_null': True},
+        }
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.selected_choice:
+            representation['selected_choice'] = instance.selected_choice.id
+        return representation
+
+
 
 
 class SurveyResponseDetailSerializer(serializers.ModelSerializer):

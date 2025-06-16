@@ -831,3 +831,13 @@ AttributeError: 'dict' object has no attribute 'is_authenticated'
 "POST //survey/api/answers/create/ HTTP/1.1" 500 100467
 Internal Server Error: /survey/api/answers/create/
 "POST //survey/api/answers/create/ HTTP/1.1" 500 46
+Internal Server Error: /survey/api/answers/create/
+"POST //survey/api/answers/create/ HTTP/1.1" 500 46
+Internal Server Error: /survey/api/answers/create/
+"POST //survey/api/answers/create/ HTTP/1.1" 500 46
+Internal Server Error: /survey/api/answers/create/
+"POST //survey/api/answers/create/ HTTP/1.1" 500 46
+Internal Server Error: /survey/api/answers/create/
+"POST //survey/api/answers/create/ HTTP/1.1" 500 46
+Internal Server Error: /survey/api/answers/create/
+"POST //survey/api/answers/create/ HTTP/1.1" 500 46

@@ -987,13 +987,32 @@ def get_user_from_request(request):
 @authentication_classes([ShwapnoJWTAuthentication])
 @permission_classes([IsJWTAuthenticated])
 def create_answer(request):
-    """
-    Endpoint for submitting survey answers
-    - Accepts answers from any authenticated user
-    - Automatically handles new/existing responses
-    - Validates against question types
-    - Tracks submission source (user/admin)
-    """
+    def validate_answer(question, data, files):
+        """Validate answer data against question type"""
+        if question.type == 'yesno':
+            if 'answer_text' not in data or data['answer_text'] not in ['Yes', 'No']:
+                return 'Yes/No questions require answer_text of "Yes" or "No"'
+
+        elif question.type == 'choice':
+            if 'selected_choice' not in data:
+                return 'Choice questions require selected_choice'
+            if not question.choices.filter(id=data['selected_choice']).exists():
+                return 'Invalid choice selected'
+
+        elif question.type == 'image':
+            if 'image' not in files:
+                return 'Image questions require an image upload'
+
+        elif question.type == 'location':
+            if not all(k in data for k in ['location_lat', 'location_lon']):
+                return 'Location questions require both latitude and longitude'
+
+        elif question.type == 'text':
+            if 'answer_text' not in data or not data['answer_text'].strip():
+                return 'Text questions require answer_text'
+
+        return None
+
     try:
         # Get authenticated user from JWT
         user_data = request.user
@@ -1011,31 +1030,29 @@ def create_answer(request):
         response_id = request.data['response']
         question_id = request.data['question']
 
-        # Get or create survey response
-        if response_id == 'new':
-            if 'survey' not in request.data:
+        # Get survey response
+        try:
+            response = SurveyResponse.objects.get(id=response_id)
+            # Verify the response belongs to the user (unless admin)
+            if not is_admin and response.user_id != user_id:
                 return Response({
-                    'code': status.HTTP_400_BAD_REQUEST,
-                    'message': 'Survey ID required for new responses'
-                }, status=status.HTTP_400_BAD_REQUEST)
+                    'code': status.HTTP_403_FORBIDDEN,
+                    'message': 'You can only answer your own surveys'
+                }, status=status.HTTP_403_FORBIDDEN)
+        except SurveyResponse.DoesNotExist:
+            return Response({
+                'code': status.HTTP_404_NOT_FOUND,
+                'message': 'Survey response not found'
+            }, status=status.HTTP_404_NOT_FOUND)
 
-            response, created = SurveyResponse.objects.get_or_create(
-                survey_id=request.data['survey'],
-                user_id=user_id,
-                defaults={'user_id': user_id}
-            )
-        else:
-            try:
-                response = SurveyResponse.objects.get(id=response_id)
-            except SurveyResponse.DoesNotExist:
-                return Response({
-                    'code': status.HTTP_404_NOT_FOUND,
-                    'message': 'Survey response not found'
-                }, status=status.HTTP_404_NOT_FOUND)
-
-        # Validate question exists
+        # Validate question exists and belongs to the survey
         try:
             question = Question.objects.get(id=question_id)
+            if question.survey_id != response.survey_id:
+                return Response({
+                    'code': status.HTTP_400_BAD_REQUEST,
+                    'message': 'Question does not belong to this survey'
+                }, status=status.HTTP_400_BAD_REQUEST)
         except Question.DoesNotExist:
             return Response({
                 'code': status.HTTP_404_NOT_FOUND,
@@ -1052,13 +1069,10 @@ def create_answer(request):
 
         # Prepare answer data
         answer_data = {
-            'response': response.id,
-            'question': question.id,
+            'response': response,
+            'question': question,
             'answer_text': request.data.get('answer_text'),
-            'selected_choice_id': request.data.get('selected_choice'),
-            'image': request.FILES.get('image'),
-            'location_lat': request.data.get('location_lat'),
-            'location_lon': request.data.get('location_lon'),
+            'is_admin_submission': is_admin,
             'submitted_by': {
                 'user_id': user_id,
                 'username': user_data.get('username', ''),
@@ -1083,40 +1097,12 @@ def create_answer(request):
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
-        logger.error(f"Error submitting answer: {str(e)}", exc_info=True)
+        import traceback
+        logger.error(f"Error submitting answer: {str(e)}\n{traceback.format_exc()}")
         return Response({
             'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
-            'message': 'Internal server error'
+            'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-def validate_answer(question, data, files):
-    """Validate answer data against question type"""
-    if question.type == 'yesno':
-        if 'answer_text' not in data or data['answer_text'] not in ['Yes', 'No']:
-            return 'Yes/No questions require answer_text of "Yes" or "No"'
-
-    elif question.type == 'choice':
-        if 'selected_choice' not in data:
-            return 'Choice questions require selected_choice'
-        if not question.choices.filter(id=data['selected_choice']).exists():
-            return 'Invalid choice selected'
-
-    elif question.type == 'image':
-        if 'image' not in files:
-            return 'Image questions require an image upload'
-
-    elif question.type == 'location':
-        if not all(k in data for k in ['location_lat', 'location_lon']):
-            return 'Location questions require both latitude and longitude'
-
-    elif question.type == 'text':
-        if 'answer_text' not in data or not data['answer_text'].strip():
-            return 'Text questions require answer_text'
-
-    return None
-
-
 
 
 

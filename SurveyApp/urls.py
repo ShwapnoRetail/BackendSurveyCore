@@ -38,11 +38,11 @@ urlpatterns = [
     path('api/choices/delete/<int:id>/', delete_choice),
 
     # Survey Response URLs
-    path('api/responses/create/', create_survey_response),
-    path('api/responses/<int:id>/', get_survey_response),
-    path('api/responses/update/<int:id>/', update_survey_response),
-    path('api/responses/delete/<int:id>/', delete_survey_response),
-    path('api/surveys/<int:survey_id>/responses/', get_responses_for_survey),
+    path('api/survey-responses/create/', create_survey_response),
+    path('api/survey-responses/<int:id>/', get_survey_response),
+    path('api/survey-responses/update/<int:id>/', update_survey_response),
+    path('api/survey-responses/delete/<int:id>/', delete_survey_response),
+    path('api/survey-responses/survey/<int:survey_id>/', get_responses_for_survey),
 
     # Answer URLs
     path('api/answers/create/', create_answer),
@@ -56,3 +56,6 @@ urlpatterns = [
     path('api/targets/update/<int:id>/', update_survey_target),
     path('api/targets/delete/<int:id>/', delete_survey_target),
 ]
+
+
+

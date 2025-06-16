@@ -102,7 +102,7 @@ class Answer(models.Model):
     image = models.ImageField(upload_to='survey_answers/images/', blank=True, null=True)
     marks_obtained = models.PositiveIntegerField(null=True, blank=True)
     is_admin_submission = models.BooleanField(default=False)
-    submitted_by = models.JSONField(default=dict)  # Stores user info from JWT
+    submitted_by = models.JSONField(default=dict)
 
     def save(self, *args, **kwargs):
 
