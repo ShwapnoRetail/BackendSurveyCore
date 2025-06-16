@@ -1,4 +1,3 @@
-
 from .modules import *
 
 
@@ -446,8 +445,6 @@ def get_question(request, id):
             'code': status.HTTP_400_BAD_REQUEST,
             'message': str(e)
         })
-
-
 
 
 @api_view(['PUT'])
@@ -970,8 +967,6 @@ def delete_survey_response(request, id):
 #         })
 
 
-
-
 def get_user_from_request(request):
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
@@ -979,8 +974,6 @@ def get_user_from_request(request):
 
     token = auth_header.split(' ')[1]
     return validate_shwapno_jwt(token)
-
-
 
 
 @api_view(['POST'])
@@ -1105,7 +1098,6 @@ def create_answer(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 # Similar updates for other CRUD operations
 @api_view(['GET', 'PUT', 'DELETE'])
 def answer_operations(request, id):
@@ -1149,9 +1141,10 @@ def answer_operations(request, id):
             if serializer.is_valid():
                 serializer.save()
                 return Response({
+                    'message': 'Answer updated successfully',
                     'code': status.HTTP_200_OK,
-                    'data': serializer.data,
-                    'message': 'Answer updated successfully'
+                    'data': serializer.data
+
                 })
             return Response({
                 'code': status.HTTP_400_BAD_REQUEST,
@@ -1161,9 +1154,11 @@ def answer_operations(request, id):
         elif request.method == 'DELETE':
             answer.delete()
             return Response({
-                'code': status.HTTP_200_OK,
-                'message': 'Answer deleted successfully'
+                'message': 'Answer deleted successfully',
+                'code': status.HTTP_200_OK
+
             })
+        return None
 
     except Answer.DoesNotExist:
         return Response({
