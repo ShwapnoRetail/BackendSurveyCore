@@ -101,6 +101,25 @@ class Answer(models.Model):
     selected_choice = models.ForeignKey(Choice, null=True, blank=True, on_delete=models.SET_NULL)
     image = models.ImageField(upload_to='survey_answers/images/', blank=True, null=True)
     marks_obtained = models.PositiveIntegerField(null=True, blank=True)
+    is_admin_submission = models.BooleanField(default=False)
+    submitted_by = models.JSONField(default=dict)  # Stores user info from JWT
+
+    def save(self, *args, **kwargs):
+
+        if not self.submitted_by and hasattr(self, '_request_user'):
+            self.submitted_by = {
+                'user_id': self._request_user['user_id'],
+                'username': self._request_user['username'],
+                'email': self._request_user['email'],
+                'is_admin': self._request_user['is_admin']
+            }
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Answer to Q{self.question.id} in response {self.response.id}"
+
+    class Meta:
+        unique_together = ['response', 'question']  # One answer per question per response
+
+    def __str__(self):
+        return f"Answer to Q{self.question.id} by {self.submitted_by.get('username', 'unknown')}"

@@ -1,3 +1,4 @@
+
 from .modules import *
 
 
@@ -445,6 +446,8 @@ def get_question(request, id):
             'code': status.HTTP_400_BAD_REQUEST,
             'message': str(e)
         })
+
+
 
 
 @api_view(['PUT'])
@@ -967,201 +970,219 @@ def delete_survey_response(request, id):
 #         })
 
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.exceptions import PermissionDenied
 
 
-# Helper function to get user from request
 def get_user_from_request(request):
-    jwt_auth = JWTAuthentication()
-    auth = jwt_auth.authenticate(request)
-    if auth:
-        return auth[0]  # Returns the user object
-    return None
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        raise AuthenticationFailed('Authorization header missing or invalid')
+
+    token = auth_header.split(' ')[1]
+    return validate_shwapno_jwt(token)
 
 
-# Answer CRUD APIs
+
+
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@authentication_classes([ShwapnoJWTAuthentication])
+@permission_classes([IsJWTAuthenticated])
 def create_answer(request):
+    """
+    Endpoint for submitting survey answers
+    - Accepts answers from any authenticated user
+    - Automatically handles new/existing responses
+    - Validates against question types
+    - Tracks submission source (user/admin)
+    """
     try:
-        user = get_user_from_request(request)
-        if not user:
-            return Response({
-                'code': status.HTTP_401_UNAUTHORIZED,
-                'message': 'Authentication required'
-            })
+        # Get authenticated user from JWT
+        user_data = request.user
+        user_id = user_data['user_id']
+        is_admin = user_data.get('is_admin', False)
 
-        # Get the survey response and verify ownership
-        response_id = request.data.get('response')
-        try:
-            response = SurveyResponse.objects.get(id=response_id)
-            if response.user_id != user.id:
-                raise PermissionDenied("You can only answer your own surveys")
-        except SurveyResponse.DoesNotExist:
+        # Validate required fields
+        required_fields = ['response', 'question']
+        if not all(field in request.data for field in required_fields):
             return Response({
-                'code': status.HTTP_404_NOT_FOUND,
-                'message': 'Survey response not found'
-            })
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': f'Required fields: {", ".join(required_fields)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate answer against question type
-        question_id = request.data.get('question')
+        response_id = request.data['response']
+        question_id = request.data['question']
+
+        # Get or create survey response
+        if response_id == 'new':
+            if 'survey' not in request.data:
+                return Response({
+                    'code': status.HTTP_400_BAD_REQUEST,
+                    'message': 'Survey ID required for new responses'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            response, created = SurveyResponse.objects.get_or_create(
+                survey_id=request.data['survey'],
+                user_id=user_id,
+                defaults={'user_id': user_id}
+            )
+        else:
+            try:
+                response = SurveyResponse.objects.get(id=response_id)
+            except SurveyResponse.DoesNotExist:
+                return Response({
+                    'code': status.HTTP_404_NOT_FOUND,
+                    'message': 'Survey response not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+        # Validate question exists
         try:
             question = Question.objects.get(id=question_id)
-            validate_answer_format(question, request.data)
         except Question.DoesNotExist:
             return Response({
                 'code': status.HTTP_404_NOT_FOUND,
                 'message': 'Question not found'
-            })
-        except ValueError as e:
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Validate answer format
+        error = validate_answer(question, request.data, request.FILES)
+        if error:
             return Response({
                 'code': status.HTTP_400_BAD_REQUEST,
-                'message': str(e)
-            })
+                'message': error
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = AnswerSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({
-                'code': status.HTTP_201_CREATED,
-                'message': "Answer created successfully",
-                'data': serializer.data
-            })
-        return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': serializer.errors
-        })
+        # Prepare answer data
+        answer_data = {
+            'response': response.id,
+            'question': question.id,
+            'answer_text': request.data.get('answer_text'),
+            'selected_choice_id': request.data.get('selected_choice'),
+            'image': request.FILES.get('image'),
+            'location_lat': request.data.get('location_lat'),
+            'location_lon': request.data.get('location_lon'),
+            'submitted_by': {
+                'user_id': user_id,
+                'username': user_data.get('username', ''),
+                'email': user_data.get('email', ''),
+                'is_admin': is_admin
+            }
+        }
 
-    except PermissionDenied as e:
-        return Response({
-            'code': status.HTTP_403_FORBIDDEN,
-            'message': str(e)
-        })
-    except Exception as e:
-        return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': str(e)
-        })
-
-
-def validate_answer_format(question, answer_data):
-    """Validate answer matches question type"""
-    q_type = question.type
-    if q_type == 'yesno' and not answer_data.get('answer_text'):
-        raise ValueError("Yes/No questions require answer_text")
-    elif q_type == 'choice' and not answer_data.get('selected_choice'):
-        raise ValueError("Choice questions require selected_choice")
-    elif q_type == 'image' and not answer_data.get('image'):
-        raise ValueError("Image questions require an image upload")
-    elif q_type == 'location' and not (answer_data.get('location_lat') and answer_data.get('location_lon')):
-        raise ValueError("Location questions require both latitude and longitude")
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_answer(request, id):
-    try:
-        user = get_user_from_request(request)
-        answer = Answer.objects.get(id=id)
-
-        # Verify the answer belongs to user's response
-        if answer.response.user_id != user.id and not user.is_staff:
-            raise PermissionDenied("You can only view your own answers")
+        # Create or update answer
+        answer, created = Answer.objects.update_or_create(
+            response=response,
+            question=question,
+            defaults=answer_data
+        )
 
         serializer = AnswerSerializer(answer)
         return Response({
-            'code': status.HTTP_200_OK,
+            'code': status.HTTP_201_CREATED,
+            'message': 'Answer submitted successfully',
             'data': serializer.data,
-            'message': 'Answer retrieved successfully'
-        })
-    except Answer.DoesNotExist:
-        return Response({
-            'code': status.HTTP_404_NOT_FOUND,
-            'message': 'Answer not found'
-        })
-    except PermissionDenied as e:
-        return Response({
-            'code': status.HTTP_403_FORBIDDEN,
-            'message': str(e)
-        })
+            'created': created
+        }, status=status.HTTP_201_CREATED)
+
     except Exception as e:
+        logger.error(f"Error submitting answer: {str(e)}", exc_info=True)
         return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': str(e)
-        })
+            'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+            'message': 'Internal server error'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['PUT'])
-@permission_classes([IsAuthenticated])
-def update_answer(request, id):
+def validate_answer(question, data, files):
+    """Validate answer data against question type"""
+    if question.type == 'yesno':
+        if 'answer_text' not in data or data['answer_text'] not in ['Yes', 'No']:
+            return 'Yes/No questions require answer_text of "Yes" or "No"'
+
+    elif question.type == 'choice':
+        if 'selected_choice' not in data:
+            return 'Choice questions require selected_choice'
+        if not question.choices.filter(id=data['selected_choice']).exists():
+            return 'Invalid choice selected'
+
+    elif question.type == 'image':
+        if 'image' not in files:
+            return 'Image questions require an image upload'
+
+    elif question.type == 'location':
+        if not all(k in data for k in ['location_lat', 'location_lon']):
+            return 'Location questions require both latitude and longitude'
+
+    elif question.type == 'text':
+        if 'answer_text' not in data or not data['answer_text'].strip():
+            return 'Text questions require answer_text'
+
+    return None
+
+
+
+
+
+# Similar updates for other CRUD operations
+@api_view(['GET', 'PUT', 'DELETE'])
+def answer_operations(request, id):
     try:
-        user = get_user_from_request(request)
+        # Authentication
+        try:
+            auth_data = get_user_from_request(request)
+            user_id = auth_data['user_id']
+            is_admin = auth_data['is_admin']
+        except AuthenticationFailed as e:
+            return Response({
+                'code': status.HTTP_401_UNAUTHORIZED,
+                'message': str(e)
+            })
+
         answer = Answer.objects.get(id=id)
+        response = answer.response
 
-        # Verify ownership
-        if answer.response.user_id != user.id and not user.is_staff:
-            raise PermissionDenied("You can only update your own answers")
+        # Permission check
+        if not is_admin and response.user_id != user_id:
+            return Response({
+                'code': status.HTTP_403_FORBIDDEN,
+                'message': 'You can only access your own answers'
+            })
 
-        # Validate against question type
-        validate_answer_format(answer.question, request.data)
-
-        serializer = AnswerSerializer(answer, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
+        if request.method == 'GET':
+            serializer = AnswerSerializer(answer)
             return Response({
                 'code': status.HTTP_200_OK,
                 'data': serializer.data,
-                'message': 'Answer updated successfully'
+                'message': 'Answer retrieved successfully',
+                'user_info': {
+                    'user_id': user_id,
+                    'username': auth_data['username'],
+                    'email': auth_data['email']
+                }
             })
-        return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': serializer.errors
-        })
+
+        elif request.method == 'PUT':
+            serializer = AnswerSerializer(answer, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'code': status.HTTP_200_OK,
+                    'data': serializer.data,
+                    'message': 'Answer updated successfully'
+                })
+            return Response({
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': serializer.errors
+            })
+
+        elif request.method == 'DELETE':
+            answer.delete()
+            return Response({
+                'code': status.HTTP_200_OK,
+                'message': 'Answer deleted successfully'
+            })
+
     except Answer.DoesNotExist:
         return Response({
             'code': status.HTTP_404_NOT_FOUND,
             'message': 'Answer not found'
-        })
-    except PermissionDenied as e:
-        return Response({
-            'code': status.HTTP_403_FORBIDDEN,
-            'message': str(e)
-        })
-    except Exception as e:
-        return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': str(e)
-        })
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_answer(request, id):
-    try:
-        user = get_user_from_request(request)
-        answer = Answer.objects.get(id=id)
-
-        # Verify ownership
-        if answer.response.user_id != user.id and not user.is_staff:
-            raise PermissionDenied("You can only delete your own answers")
-
-        answer.delete()
-        return Response({
-            'code': status.HTTP_200_OK,
-            'message': 'Answer deleted successfully'
-        })
-    except Answer.DoesNotExist:
-        return Response({
-            'code': status.HTTP_404_NOT_FOUND,
-            'message': 'Answer not found'
-        })
-    except PermissionDenied as e:
-        return Response({
-            'code': status.HTTP_403_FORBIDDEN,
-            'message': str(e)
         })
     except Exception as e:
         return Response({
