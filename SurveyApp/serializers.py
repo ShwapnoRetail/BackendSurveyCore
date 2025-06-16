@@ -1,7 +1,7 @@
 from rest_framework import serializers
-#from .models import Survey, SurveyTarget, Question, Choice, Department, SurveyType
+# from .models import Survey, SurveyTarget, Question, Choice, Department, SurveyType
 import requests
-from.models import *
+from .models import *
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
@@ -18,8 +18,6 @@ class ChoiceSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'text', 'is_correct']
 
 
-
-
 class QuestionSerializer(serializers.ModelSerializer):
     choices = ChoiceSerializer(many=True, required=False)
 
@@ -29,11 +27,11 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class SurveyTargetSerializer(serializers.ModelSerializer):
+    survey = serializers.PrimaryKeyRelatedField(queryset=Survey.objects.all())
+
     class Meta:
         model = SurveyTarget
-        fields = ['target_type', 'user_id', 'department', 'site_id', 'role_name']
-
-
+        fields = ['survey', 'target_type', 'user_id', 'department', 'site_id', 'role_name']
 
 
 class SurveySerializer(serializers.ModelSerializer):
@@ -77,11 +75,9 @@ class SurveySerializer(serializers.ModelSerializer):
         questions_data = validated_data.pop('questions', [])
         targets_data = validated_data.pop('targets', [])
 
-
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-
 
         instance.questions.all().delete()
         for question_data in questions_data:
@@ -91,15 +87,12 @@ class SurveySerializer(serializers.ModelSerializer):
             for choice_data in choices_data:
                 Choice.objects.create(question=question, **choice_data)
 
-
         instance.targets.all().delete()
         for target_data in targets_data:
             SurveyTarget.objects.create(survey=instance, **target_data)
 
         return instance
 
-
-# Add these to your existing serializers.py
 
 class SurveyResponseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -121,4 +114,3 @@ class SurveyResponseDetailSerializer(serializers.ModelSerializer):
         model = SurveyResponse
         fields = ['id', 'survey', 'user_id', 'submitted_at',
                   'location_lat', 'location_lon', 'answers']
-

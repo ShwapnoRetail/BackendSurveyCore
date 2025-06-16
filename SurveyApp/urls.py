@@ -30,11 +30,6 @@ urlpatterns = [
     path('api/questions/delete/<int:id>/', delete_question),
     path('api/get-questions-survey/<int:id>/', get_questions_by_survey),
 
-    # Answer URLs
-    path('api/answers/create/', create_answer),
-    path('api/answers/<int:id>/', get_answer),
-    path('api/answers/update/<int:id>/', update_answer),
-    path('api/answers/delete/<int:id>/', delete_answer),
 
     # Choice URLs
     path('api/choices/create/', create_choice),
@@ -42,17 +37,24 @@ urlpatterns = [
     path('api/choices/update/<int:id>/', update_choice),
     path('api/choices/delete/<int:id>/', delete_choice),
 
-    # Survey Target URLs
-    path('api/survey-targets/create/', create_survey_target),
-    path('api/survey-targets/<int:id>/', get_survey_target),
-    path('api/survey-targets/update/<int:id>/', update_survey_target),
-    path('api/survey-targets/delete/<int:id>/', delete_survey_target),
-
     # Survey Response URLs
     path('api/survey-responses/create/', create_survey_response),
     path('api/survey-responses/<int:id>/', get_survey_response),
     path('api/survey-responses/update/<int:id>/', update_survey_response),
     path('api/survey-responses/delete/<int:id>/', delete_survey_response),
     path('api/survey-responses/survey/<int:survey_id>/', get_responses_for_survey),
+
+    # Answer URLs
+    path('api/answers/create/', create_answer),
+    path('api/answers/<int:id>/', get_answer),
+    path('api/answers/update/<int:id>/', update_answer),
+    path('api/answers/delete/<int:id>/', delete_answer),
+
+    # Survey Target URLs
+    path('api/survey-targets/create/', create_survey_target),
+    path('api/survey-targets/<int:id>/', get_survey_target),
+    path('api/survey-targets/update/<int:id>/', update_survey_target),
+    path('api/survey-targets/delete/<int:id>/', delete_survey_target),
+
 
 ]

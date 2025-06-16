@@ -571,15 +571,17 @@ def create_choice(request):
             'message': str(e)
         })
 
+
 @api_view(['GET'])
 def get_choice(request, id):
     try:
         choice = Choice.objects.get(id=id)
         serializer = ChoiceSerializer(choice)
         return Response({
+            'message': 'Choice retrieved successfully',
             'code': status.HTTP_200_OK,
             'data': serializer.data,
-            'message': 'Choice retrieved successfully'
+
         })
     except Choice.DoesNotExist:
         return Response({
@@ -601,9 +603,10 @@ def update_choice(request, id):
         if serializer.is_valid():
             serializer.save()
             return Response({
+                'message': 'Choice updated successfully',
                 'code': status.HTTP_200_OK,
                 'data': serializer.data,
-                'message': 'Choice updated successfully'
+
             })
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
@@ -646,23 +649,42 @@ def delete_choice(request, id):
 @api_view(['POST'])
 def create_survey_target(request):
     try:
-        serializer = SurveyTargetSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        survey_id = request.data.get('survey')
+        if not survey_id:
             return Response({
-                'code': status.HTTP_201_CREATED,
-                'message': "Survey target created successfully",
-                'data': serializer.data
-            })
+                'code': 400,
+                'message': 'survey field is required'
+            }, status=400)
+
+        try:
+            survey = Survey.objects.get(id=survey_id)
+        except Survey.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': 'Survey not found'
+            }, status=404)
+
+        target = SurveyTarget.objects.create(
+            survey=survey,
+            target_type=request.data.get('target_type'),
+            role_name=request.data.get('role_name'),
+            department_id=request.data.get('department'),
+            user_id=request.data.get('user_id'),
+            site_id=request.data.get('site_id')
+        )
+
+        serializer = SurveyTargetSerializer(target)
         return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': serializer.errors
-        })
+            'message': 'Target created successfully',
+            'code': 201,
+            'data': serializer.data
+        }, status=201)
+
     except Exception as e:
         return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
+            'code': 400,
             'message': str(e)
-        })
+        }, status=400)
 
 
 @api_view(['GET'])
@@ -695,9 +717,10 @@ def update_survey_target(request, id):
         if serializer.is_valid():
             serializer.save()
             return Response({
+                'message': 'Survey target updated successfully',
                 'code': status.HTTP_200_OK,
                 'data': serializer.data,
-                'message': 'Survey target updated successfully'
+
             })
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
@@ -848,9 +871,157 @@ def delete_survey_response(request, id):
 
 
 # Answer CRUD APIs
+# @api_view(['POST'])
+# def create_answer(request):
+#     try:
+#         serializer = AnswerSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({
+#                 'code': status.HTTP_201_CREATED,
+#                 'message': "Answer created successfully",
+#                 'data': serializer.data
+#             })
+#         return Response({
+#             'code': status.HTTP_400_BAD_REQUEST,
+#             'message': serializer.errors
+#         })
+#     except Exception as e:
+#         return Response({
+#             'code': status.HTTP_400_BAD_REQUEST,
+#             'message': str(e)
+#         })
+#
+#
+# @api_view(['GET'])
+# def get_answer(request, id):
+#     try:
+#         answer = Answer.objects.get(id=id)
+#         serializer = AnswerSerializer(answer)
+#         return Response({
+#             'code': status.HTTP_200_OK,
+#             'data': serializer.data,
+#             'message': 'Answer retrieved successfully'
+#         })
+#     except Answer.DoesNotExist:
+#         return Response({
+#             'code': status.HTTP_404_NOT_FOUND,
+#             'message': 'Answer not found'
+#         })
+#     except Exception as e:
+#         return Response({
+#             'code': status.HTTP_400_BAD_REQUEST,
+#             'message': str(e)
+#         })
+#
+#
+# @api_view(['PUT'])
+# def update_answer(request, id):
+#     try:
+#         answer = Answer.objects.get(id=id)
+#         serializer = AnswerSerializer(answer, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             # Handle image upload separately if needed
+#             serializer.save()
+#             return Response({
+#                 'message': 'Answer updated successfully',
+#                 'code': status.HTTP_200_OK,
+#                 'data': serializer.data,
+#
+#             })
+#         return Response({
+#             'code': status.HTTP_400_BAD_REQUEST,
+#             'message': serializer.errors
+#         })
+#     except Answer.DoesNotExist:
+#         return Response({
+#             'code': status.HTTP_404_NOT_FOUND,
+#             'message': 'Answer not found'
+#         })
+#     except Exception as e:
+#         return Response({
+#             'code': status.HTTP_400_BAD_REQUEST,
+#             'message': str(e)
+#         })
+#
+#
+# @api_view(['DELETE'])
+# def delete_answer(request, id):
+#     try:
+#         answer = Answer.objects.get(id=id)
+#         answer.delete()
+#         return Response({
+#             'message': 'Answer deleted successfully',
+#             'code': status.HTTP_200_OK,
+#
+#         })
+#     except Answer.DoesNotExist:
+#         return Response({
+#             'code': status.HTTP_404_NOT_FOUND,
+#             'message': 'Answer not found'
+#         })
+#     except Exception as e:
+#         return Response({
+#             'code': status.HTTP_400_BAD_REQUEST,
+#             'message': str(e)
+#         })
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import PermissionDenied
+
+
+# Helper function to get user from request
+def get_user_from_request(request):
+    jwt_auth = JWTAuthentication()
+    auth = jwt_auth.authenticate(request)
+    if auth:
+        return auth[0]  # Returns the user object
+    return None
+
+
+# Answer CRUD APIs
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_answer(request):
     try:
+        user = get_user_from_request(request)
+        if not user:
+            return Response({
+                'code': status.HTTP_401_UNAUTHORIZED,
+                'message': 'Authentication required'
+            })
+
+        # Get the survey response and verify ownership
+        response_id = request.data.get('response')
+        try:
+            response = SurveyResponse.objects.get(id=response_id)
+            if response.user_id != user.id:
+                raise PermissionDenied("You can only answer your own surveys")
+        except SurveyResponse.DoesNotExist:
+            return Response({
+                'code': status.HTTP_404_NOT_FOUND,
+                'message': 'Survey response not found'
+            })
+
+        # Validate answer against question type
+        question_id = request.data.get('question')
+        try:
+            question = Question.objects.get(id=question_id)
+            validate_answer_format(question, request.data)
+        except Question.DoesNotExist:
+            return Response({
+                'code': status.HTTP_404_NOT_FOUND,
+                'message': 'Question not found'
+            })
+        except ValueError as e:
+            return Response({
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': str(e)
+            })
+
         serializer = AnswerSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -863,6 +1034,12 @@ def create_answer(request):
             'code': status.HTTP_400_BAD_REQUEST,
             'message': serializer.errors
         })
+
+    except PermissionDenied as e:
+        return Response({
+            'code': status.HTTP_403_FORBIDDEN,
+            'message': str(e)
+        })
     except Exception as e:
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
@@ -870,10 +1047,30 @@ def create_answer(request):
         })
 
 
+def validate_answer_format(question, answer_data):
+    """Validate answer matches question type"""
+    q_type = question.type
+    if q_type == 'yesno' and not answer_data.get('answer_text'):
+        raise ValueError("Yes/No questions require answer_text")
+    elif q_type == 'choice' and not answer_data.get('selected_choice'):
+        raise ValueError("Choice questions require selected_choice")
+    elif q_type == 'image' and not answer_data.get('image'):
+        raise ValueError("Image questions require an image upload")
+    elif q_type == 'location' and not (answer_data.get('location_lat') and answer_data.get('location_lon')):
+        raise ValueError("Location questions require both latitude and longitude")
+
+
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_answer(request, id):
     try:
+        user = get_user_from_request(request)
         answer = Answer.objects.get(id=id)
+
+        # Verify the answer belongs to user's response
+        if answer.response.user_id != user.id and not user.is_staff:
+            raise PermissionDenied("You can only view your own answers")
+
         serializer = AnswerSerializer(answer)
         return Response({
             'code': status.HTTP_200_OK,
@@ -885,6 +1082,11 @@ def get_answer(request, id):
             'code': status.HTTP_404_NOT_FOUND,
             'message': 'Answer not found'
         })
+    except PermissionDenied as e:
+        return Response({
+            'code': status.HTTP_403_FORBIDDEN,
+            'message': str(e)
+        })
     except Exception as e:
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
@@ -893,12 +1095,21 @@ def get_answer(request, id):
 
 
 @api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def update_answer(request, id):
     try:
+        user = get_user_from_request(request)
         answer = Answer.objects.get(id=id)
+
+        # Verify ownership
+        if answer.response.user_id != user.id and not user.is_staff:
+            raise PermissionDenied("You can only update your own answers")
+
+        # Validate against question type
+        validate_answer_format(answer.question, request.data)
+
         serializer = AnswerSerializer(answer, data=request.data, partial=True)
         if serializer.is_valid():
-            # Handle image upload separately if needed
             serializer.save()
             return Response({
                 'code': status.HTTP_200_OK,
@@ -914,6 +1125,11 @@ def update_answer(request, id):
             'code': status.HTTP_404_NOT_FOUND,
             'message': 'Answer not found'
         })
+    except PermissionDenied as e:
+        return Response({
+            'code': status.HTTP_403_FORBIDDEN,
+            'message': str(e)
+        })
     except Exception as e:
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
@@ -922,9 +1138,16 @@ def update_answer(request, id):
 
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def delete_answer(request, id):
     try:
+        user = get_user_from_request(request)
         answer = Answer.objects.get(id=id)
+
+        # Verify ownership
+        if answer.response.user_id != user.id and not user.is_staff:
+            raise PermissionDenied("You can only delete your own answers")
+
         answer.delete()
         return Response({
             'code': status.HTTP_200_OK,
@@ -934,6 +1157,11 @@ def delete_answer(request, id):
         return Response({
             'code': status.HTTP_404_NOT_FOUND,
             'message': 'Answer not found'
+        })
+    except PermissionDenied as e:
+        return Response({
+            'code': status.HTTP_403_FORBIDDEN,
+            'message': str(e)
         })
     except Exception as e:
         return Response({
