@@ -69,9 +69,10 @@ def get_departments(request):
         print(dept_list)
         serializer = DepartmentSerializer(dept_list, many=True)
         return Response({
+            'message': 'Department retrieved successfully',
             'code': status.HTTP_200_OK,
-            'data': serializer.data,
-            'message': 'Department retrieved successfully'
+            'data': serializer.data
+
         })
 
     except Exception as e:
@@ -194,12 +195,10 @@ def update_survey_type(request, id):
         })
 
 
-
-
 @api_view(['DELETE'])
 def delete_survey_type_id(request, id):
     try:
-        surveyObj=SurveyType.objects.get(id=id)
+        surveyObj = SurveyType.objects.get(id=id)
         surveyObj.delete()
         return Response({
             'code': status.HTTP_200_OK,
@@ -221,12 +220,11 @@ def delete_survey_type_id(request, id):
 
 
 @api_view(['GET'])
-
 def get_survey_list(request):
     try:
-        survey_type=SurveyType.objects.all()
+        survey_type = SurveyType.objects.all()
 
-        serializer=SurveyTypeSerializer(survey_type, many=True)
+        serializer = SurveyTypeSerializer(survey_type, many=True)
         return Response({
             'code': status.HTTP_200_OK,
             'data': serializer.data,
@@ -240,15 +238,13 @@ def get_survey_list(request):
         })
 
 
-
-
 @api_view(['POST'])
 def create_survey(request):
     try:
         payload = request.data
         # Add created_by_user_id from request (assuming it's in the JWT or session)
-        # In a real implementation, you'd get this from the authenticated user
-        payload['created_by_user_id'] = request.user.id if request.user.is_authenticated else 1  # Default for testing
+        # In a real implementation from the authenticated user
+        payload['created_by_user_id'] = request.user.id if request.user.is_authenticated else 1
 
         serializer = SurveySerializer(data=payload)
         if serializer.is_valid():
@@ -277,9 +273,10 @@ def get_survey_list(request):
         surveys = Survey.objects.all()
         serializer = SurveySerializer(surveys, many=True)
         return Response({
+            'message': 'Survey list retrieved successfully',
             'code': status.HTTP_200_OK,
-            'data': serializer.data,
-            'message': 'Survey list retrieved successfully'
+            'data': serializer.data
+
         })
     except Exception as e:
         return Response({
@@ -307,9 +304,10 @@ def get_survey_detail(request, id):
         response_data['site_details'] = site_details
 
         return Response({
+            'message': 'Survey retrieved successfully',
             'code': status.HTTP_200_OK,
             'data': response_data,
-            'message': 'Survey retrieved successfully'
+
         })
     except Survey.DoesNotExist:
         return Response({
@@ -337,9 +335,10 @@ def update_survey(request, id):
 
         serializer.save()
         return Response({
+            'message': 'Survey updated successfully',
             'code': status.HTTP_200_OK,
             'data': serializer.data,
-            'message': 'Survey updated successfully'
+
         })
     except Survey.DoesNotExist:
         return Response({
@@ -366,6 +365,494 @@ def delete_survey(request, id):
         return Response({
             'code': status.HTTP_404_NOT_FOUND,
             'message': 'Survey not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+# Question CRUD APIs
+@api_view(['POST'])
+def create_question(request):
+    try:
+        serializer = QuestionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_201_CREATED,
+                'message': "Question created successfully",
+                'data': serializer.data
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['GET'])
+def get_question(request, id):
+    try:
+        question = Question.objects.get(id=id)
+        serializer = QuestionSerializer(question)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Question retrieved successfully'
+        })
+    except Question.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Question not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['PUT'])
+def update_question(request, id):
+    try:
+        question = Question.objects.get(id=id)
+        serializer = QuestionSerializer(question, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_200_OK,
+                'data': serializer.data,
+                'message': 'Question updated successfully'
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except Question.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Question not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['DELETE'])
+def delete_question(request, id):
+    try:
+        question = Question.objects.get(id=id)
+        question.delete()
+        return Response({
+            'code': status.HTTP_200_OK,
+            'message': 'Question deleted successfully'
+        })
+    except Question.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Question not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+# Choice CRUD APIs
+@api_view(['POST'])
+def create_choice(request):
+    try:
+        serializer = ChoiceSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_201_CREATED,
+                'message': "Choice created successfully",
+                'data': serializer.data
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['GET'])
+def get_choice(request, id):
+    try:
+        choice = Choice.objects.get(id=id)
+        serializer = ChoiceSerializer(choice)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Choice retrieved successfully'
+        })
+    except Choice.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Choice not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['PUT'])
+def update_choice(request, id):
+    try:
+        choice = Choice.objects.get(id=id)
+        serializer = ChoiceSerializer(choice, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_200_OK,
+                'data': serializer.data,
+                'message': 'Choice updated successfully'
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except Choice.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Choice not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['DELETE'])
+def delete_choice(request, id):
+    try:
+        choice = Choice.objects.get(id=id)
+        choice.delete()
+        return Response({
+            'code': status.HTTP_200_OK,
+            'message': 'Choice deleted successfully'
+        })
+    except Choice.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Choice not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+# Survey Target CRUD APIs
+@api_view(['POST'])
+def create_survey_target(request):
+    try:
+        serializer = SurveyTargetSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_201_CREATED,
+                'message': "Survey target created successfully",
+                'data': serializer.data
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['GET'])
+def get_survey_target(request, id):
+    try:
+        target = SurveyTarget.objects.get(id=id)
+        serializer = SurveyTargetSerializer(target)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Survey target retrieved successfully'
+        })
+    except SurveyTarget.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Survey target not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['PUT'])
+def update_survey_target(request, id):
+    try:
+        target = SurveyTarget.objects.get(id=id)
+        serializer = SurveyTargetSerializer(target, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_200_OK,
+                'data': serializer.data,
+                'message': 'Survey target updated successfully'
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except SurveyTarget.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Survey target not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['DELETE'])
+def delete_survey_target(request, id):
+    try:
+        target = SurveyTarget.objects.get(id=id)
+        target.delete()
+        return Response({
+            'code': status.HTTP_200_OK,
+            'message': 'Survey target deleted successfully'
+        })
+    except SurveyTarget.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Survey target not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+# Survey Response CRUD APIs
+@api_view(['POST'])
+def create_survey_response(request):
+    try:
+        serializer = SurveyResponseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_201_CREATED,
+                'message': "Survey response created successfully",
+                'data': serializer.data
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['GET'])
+def get_survey_response(request, id):
+    try:
+        response = SurveyResponse.objects.get(id=id)
+        serializer = SurveyResponseDetailSerializer(response)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Survey response retrieved successfully'
+        })
+    except SurveyResponse.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Survey response not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['GET'])
+def get_responses_for_survey(request, survey_id):
+    try:
+        responses = SurveyResponse.objects.filter(survey_id=survey_id)
+        serializer = SurveyResponseDetailSerializer(responses, many=True)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Survey responses retrieved successfully'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['PUT'])
+def update_survey_response(request, id):
+    try:
+        response = SurveyResponse.objects.get(id=id)
+        serializer = SurveyResponseSerializer(response, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_200_OK,
+                'data': serializer.data,
+                'message': 'Survey response updated successfully'
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except SurveyResponse.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Survey response not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['DELETE'])
+def delete_survey_response(request, id):
+    try:
+        response = SurveyResponse.objects.get(id=id)
+        response.delete()
+        return Response({
+            'code': status.HTTP_200_OK,
+            'message': 'Survey response deleted successfully'
+        })
+    except SurveyResponse.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Survey response not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+# Answer CRUD APIs
+@api_view(['POST'])
+def create_answer(request):
+    try:
+        serializer = AnswerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'code': status.HTTP_201_CREATED,
+                'message': "Answer created successfully",
+                'data': serializer.data
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['GET'])
+def get_answer(request, id):
+    try:
+        answer = Answer.objects.get(id=id)
+        serializer = AnswerSerializer(answer)
+        return Response({
+            'code': status.HTTP_200_OK,
+            'data': serializer.data,
+            'message': 'Answer retrieved successfully'
+        })
+    except Answer.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Answer not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['PUT'])
+def update_answer(request, id):
+    try:
+        answer = Answer.objects.get(id=id)
+        serializer = AnswerSerializer(answer, data=request.data, partial=True)
+        if serializer.is_valid():
+            # Handle image upload separately if needed
+            serializer.save()
+            return Response({
+                'code': status.HTTP_200_OK,
+                'data': serializer.data,
+                'message': 'Answer updated successfully'
+            })
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
+    except Answer.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Answer not found'
+        })
+    except Exception as e:
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': str(e)
+        })
+
+
+@api_view(['DELETE'])
+def delete_answer(request, id):
+    try:
+        answer = Answer.objects.get(id=id)
+        answer.delete()
+        return Response({
+            'code': status.HTTP_200_OK,
+            'message': 'Answer deleted successfully'
+        })
+    except Answer.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': 'Answer not found'
         })
     except Exception as e:
         return Response({
