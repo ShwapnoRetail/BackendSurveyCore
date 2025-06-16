@@ -377,18 +377,47 @@ def delete_survey(request, id):
 @api_view(['POST'])
 def create_question(request):
     try:
-        serializer = QuestionSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        survey_id = request.data.get('survey')
+        if not survey_id:
             return Response({
-                'code': status.HTTP_201_CREATED,
-                'message': "Question created successfully",
-                'data': serializer.data
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': "Survey ID is required"
             })
+
+        try:
+            survey = Survey.objects.get(id=survey_id)
+        except Survey.DoesNotExist:
+            return Response({
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': "Survey does not exist"
+            })
+
+        question_data = request.data.copy()
+        question = Question.objects.create(
+            survey=survey,
+            text=question_data.get('text'),
+            type=question_data.get('type'),
+            has_marks=question_data.get('has_marks', False),
+            marks=question_data.get('marks'),
+            is_required=question_data.get('is_required', True)
+        )
+
+        # Handle choices if provided
+        if question_data.get('choices'):
+            for choice_data in question_data['choices']:
+                Choice.objects.create(
+                    question=question,
+                    text=choice_data.get('text'),
+                    is_correct=choice_data.get('is_correct', False)
+                )
+
+        serializer = QuestionSerializer(question)
         return Response({
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': serializer.errors
+            'code': status.HTTP_201_CREATED,
+            'message': "Question created successfully",
+            'data': serializer.data
         })
+
     except Exception as e:
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
@@ -426,9 +455,10 @@ def update_question(request, id):
         if serializer.is_valid():
             serializer.save()
             return Response({
+                'message': 'Question updated successfully',
                 'code': status.HTTP_200_OK,
                 'data': serializer.data,
-                'message': 'Question updated successfully'
+
             })
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
@@ -452,8 +482,9 @@ def delete_question(request, id):
         question = Question.objects.get(id=id)
         question.delete()
         return Response({
+            'message': 'Question deleted successfully',
             'code': status.HTTP_200_OK,
-            'message': 'Question deleted successfully'
+
         })
     except Question.DoesNotExist:
         return Response({
@@ -464,6 +495,41 @@ def delete_question(request, id):
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
             'message': str(e)
+        })
+
+
+@api_view(['GET'])
+def get_questions_by_survey(request, id):
+    try:
+        survey = Survey.objects.get(id=id)
+        questions = Question.objects.filter(survey=survey).prefetch_related('choices')
+
+        # Custom serialization
+        data = []
+        for q in questions:
+            question_data = {
+                'id': q.id,
+                'text': q.text,
+                'type': q.type,
+                'has_marks': q.has_marks,
+                'marks': q.marks,
+                'is_required': q.is_required,
+                'choices': [{'id': c.id, 'text': c.text} for c in q.choices.all()]
+            }
+            data.append(question_data)
+
+        return Response({
+            'message': 'Questions Retrieved Successfully by Survey ID',
+            'code': status.HTTP_200_OK,
+            'survey_id': id,
+            'survey_title': survey.title,
+            'questions': data
+        })
+
+    except Survey.DoesNotExist:
+        return Response({
+            'code': status.HTTP_404_NOT_FOUND,
+            'message': f'Survey not found'
         })
 
 
