@@ -55,7 +55,8 @@ urlpatterns = [
     path('api/targets/<int:id>/', get_survey_target),
     path('api/targets/update/<int:id>/', update_survey_target),
     path('api/targets/delete/<int:id>/', delete_survey_target),
+
+    # Survey Response
+    path('api/responses/', submit_survey_response),
+    path('api/responses/my/', get_user_survey_responses),
 ]
-
-
-

@@ -86,12 +86,24 @@ class SurveyTarget(models.Model):
 class SurveyResponse(models.Model):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE)
     user_id = models.IntegerField()
+    total_score = models.IntegerField(null=True, blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
     location_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     location_lon = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
     def __str__(self):
         return f"{self.survey.title} by {self.user_id}"
+
+
+
+class QuestionResponse(models.Model):
+    survey_response = models.ForeignKey(SurveyResponse, on_delete=models.CASCADE, related_name='question_responses')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    answer_text = models.TextField(null=True, blank=True)
+    selected_choice_ids = models.JSONField(null=True, blank=True)  # For choice/multiple
+    score_awarded = models.IntegerField(null=True, blank=True)
+
+
 
 
 class Answer(models.Model):

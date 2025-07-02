@@ -235,31 +235,30 @@ def get_survey_list(request):
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
             'message': str(e)
+
         })
 
 
 @api_view(['POST'])
+@authentication_classes([ShwapnoJWTAuthentication])
+@permission_classes([IsJWTAuthenticated])
 def create_survey(request):
     try:
-        payload = request.data
-        # Add created_by_user_id from request (assuming it's in the JWT or session)
-        # In a real implementation from the authenticated user
-        payload['created_by_user_id'] = request.user.id if request.user.is_authenticated else 1
+        # Add created_by_user_id from authenticated user
+        request.data['created_by_user_id'] = request.user['user_id']
 
-        serializer = SurveySerializer(data=payload)
+        serializer = SurveySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({
                 'code': status.HTTP_201_CREATED,
-                'message': "Survey created successfully",
+                'message': "Survey created successfully with all related data",
                 'data': serializer.data
             })
-        else:
-            return Response({
-                'code': status.HTTP_400_BAD_REQUEST,
-                'message': serializer.errors
-            })
-
+        return Response({
+            'code': status.HTTP_400_BAD_REQUEST,
+            'message': serializer.errors
+        })
     except Exception as e:
         return Response({
             'code': status.HTTP_400_BAD_REQUEST,
@@ -271,6 +270,7 @@ def create_survey(request):
 def get_survey_list(request):
     try:
         surveys = Survey.objects.all()
+        print(surveys)
         serializer = SurveySerializer(surveys, many=True)
         return Response({
             'message': 'Survey list retrieved successfully',
@@ -763,7 +763,7 @@ def delete_survey_target(request, id):
 @api_view(['POST'])
 def create_survey_response(request):
     try:
-        serializer = SurveyResponseSerializer(data=request.data)
+        serializer = SurveyResponseCreateSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -825,7 +825,7 @@ def get_responses_for_survey(request, survey_id):
 def update_survey_response(request, id):
     try:
         response = SurveyResponse.objects.get(id=id)
-        serializer = SurveyResponseSerializer(response, data=request.data, partial=True)
+        serializer = SurveyResponseCreateSerializer(response, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -868,103 +868,6 @@ def delete_survey_response(request, id):
             'code': status.HTTP_400_BAD_REQUEST,
             'message': str(e)
         })
-
-
-# Answer CRUD APIs
-# @api_view(['POST'])
-# def create_answer(request):
-#     try:
-#         serializer = AnswerSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({
-#                 'code': status.HTTP_201_CREATED,
-#                 'message': "Answer created successfully",
-#                 'data': serializer.data
-#             })
-#         return Response({
-#             'code': status.HTTP_400_BAD_REQUEST,
-#             'message': serializer.errors
-#         })
-#     except Exception as e:
-#         return Response({
-#             'code': status.HTTP_400_BAD_REQUEST,
-#             'message': str(e)
-#         })
-#
-#
-# @api_view(['GET'])
-# def get_answer(request, id):
-#     try:
-#         answer = Answer.objects.get(id=id)
-#         serializer = AnswerSerializer(answer)
-#         return Response({
-#             'code': status.HTTP_200_OK,
-#             'data': serializer.data,
-#             'message': 'Answer retrieved successfully'
-#         })
-#     except Answer.DoesNotExist:
-#         return Response({
-#             'code': status.HTTP_404_NOT_FOUND,
-#             'message': 'Answer not found'
-#         })
-#     except Exception as e:
-#         return Response({
-#             'code': status.HTTP_400_BAD_REQUEST,
-#             'message': str(e)
-#         })
-#
-#
-# @api_view(['PUT'])
-# def update_answer(request, id):
-#     try:
-#         answer = Answer.objects.get(id=id)
-#         serializer = AnswerSerializer(answer, data=request.data, partial=True)
-#         if serializer.is_valid():
-#             # Handle image upload separately if needed
-#             serializer.save()
-#             return Response({
-#                 'message': 'Answer updated successfully',
-#                 'code': status.HTTP_200_OK,
-#                 'data': serializer.data,
-#
-#             })
-#         return Response({
-#             'code': status.HTTP_400_BAD_REQUEST,
-#             'message': serializer.errors
-#         })
-#     except Answer.DoesNotExist:
-#         return Response({
-#             'code': status.HTTP_404_NOT_FOUND,
-#             'message': 'Answer not found'
-#         })
-#     except Exception as e:
-#         return Response({
-#             'code': status.HTTP_400_BAD_REQUEST,
-#             'message': str(e)
-#         })
-#
-#
-# @api_view(['DELETE'])
-# def delete_answer(request, id):
-#     try:
-#         answer = Answer.objects.get(id=id)
-#         answer.delete()
-#         return Response({
-#             'message': 'Answer deleted successfully',
-#             'code': status.HTTP_200_OK,
-#
-#         })
-#     except Answer.DoesNotExist:
-#         return Response({
-#             'code': status.HTTP_404_NOT_FOUND,
-#             'message': 'Answer not found'
-#         })
-#     except Exception as e:
-#         return Response({
-#             'code': status.HTTP_400_BAD_REQUEST,
-#             'message': str(e)
-#         })
 
 
 def get_user_from_request(request):
@@ -1170,3 +1073,35 @@ def answer_operations(request, id):
             'code': status.HTTP_400_BAD_REQUEST,
             'message': str(e)
         })
+
+
+
+@api_view(['POST'])
+@authentication_classes([ShwapnoJWTAuthentication])
+@permission_classes([IsJWTAuthenticated])
+def submit_survey_response(request):
+    serializer = SurveyResponseCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        response = serializer.save()
+        return Response({
+            'code': 201,
+            'message': 'Survey response submitted successfully',
+            'data': SurveyResponseDetailSerializer(response).data
+        }, status=201)
+    return Response({'code': 400, 'message': serializer.errors}, status=400)
+
+
+
+
+@api_view(['GET'])
+@authentication_classes([ShwapnoJWTAuthentication])
+@permission_classes([IsJWTAuthenticated])
+def get_user_survey_responses(request):
+    user_id = request.user['user_id']
+    responses = SurveyResponse.objects.filter(user_id=user_id).order_by('-submitted_at')
+    data = SurveyResponseDetailSerializer(responses, many=True).data
+    return Response({
+        'code': 200,
+        'message': 'User survey responses fetched',
+        'data': data
+    })
